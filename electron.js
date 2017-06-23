@@ -1,7 +1,8 @@
 // ./main.js
-const {app, BrowserWindow} = require('electron')
-const path = require('path')
-const url = require('url')
+const {app, BrowserWindow, ipcMain} = require('electron')
+const {path} = require('path')
+const {url} = require('url')
+const http = require('http')
 
 require('dotenv').config();
 
@@ -43,4 +44,19 @@ app.on('window-all-closed', function () {
   if (process.platform != 'darwin') {
     app.quit();
   }
+});
+
+ipcMain.on('webget',(event, args) => {
+    console.log('webgetting!');
+    http.get(args, (response) => {
+        console.log("get response.");
+        var body = '';
+        response.on('data', (d) => {
+            body += d;
+        });
+        response.on('end', () => {
+            console.log("get response END");
+            event.sender.send(args, body);
+        });
+    });
 });
