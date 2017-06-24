@@ -1,17 +1,29 @@
 // ./main.js
-const {app, BrowserWindow, ipcMain} = require('electron')
-const {path} = require('path')
-const {url} = require('url')
-const http = require('http')
+const {app, BrowserWindow, ipcMain, session} = require('electron');
+const {path} = require('path');
+const {url} = require('url');
+const http = require('http');
 
 require('dotenv').config();
 
 let win = null;
 
-app.on('ready', function () {
+app.on('ready', function() {
+
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+      ['*'], (details, callback) => {
+        console.log('something interesting here.');
+        details.requestHeaders['Referer'] = '';
+        callback({cancel: false, requestHeaders: details.requestHeaders});
+      });
 
   // Initialize the window to our specified dimensions
-  win = new BrowserWindow({width: 1000, height: 600});
+  win = new BrowserWindow({
+    width: 1000,
+    height: 600,
+    backgroundColor: '#252A2C',
+    titleBarStyle: 'hidden'
+  });
 
   // Specify entry point
   if (process.env.PACKAGE === 'true') {
@@ -25,10 +37,12 @@ app.on('ready', function () {
 
     // Show dev tools
     win.webContents.openDevTools()
+
+    win.setMenu(null);
   }
-  
+
   // Remove window once app is closed
-  win.on('closed', function () {
+  win.on('closed', function() {
     win = null;
   });
 
@@ -40,23 +54,23 @@ app.on('activate', () => {
   }
 })
 
-app.on('window-all-closed', function () {
+app.on('window-all-closed', function() {
   if (process.platform != 'darwin') {
     app.quit();
   }
 });
 
-ipcMain.on('webget',(event, args) => {
-    console.log('webgetting!');
-    http.get(args, (response) => {
-        console.log("get response.");
-        var body = '';
-        response.on('data', (d) => {
-            body += d;
-        });
-        response.on('end', () => {
-            console.log("get response END");
-            event.sender.send(args, body);
-        });
+ipcMain.on('webget', (event, args) => {
+  console.log('webgetting!');
+  http.get(args, (response) => {
+    console.log('get response.');
+    var body = '';
+    response.on('data', (d) => {
+      body += d;
     });
+    response.on('end', () => {
+      console.log('get response END');
+      event.sender.send(args, body);
+    });
+  });
 });

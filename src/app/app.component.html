@@ -2,4 +2,8 @@
   {{title}}
 </h1>
 <button (click)="getPage()">Get page</button>
-{{ pageHTML | async }}
+<button (click)="nextPage()">Next page</button>
+<button (click)="previousPage()">Previous page</button>
+<input [(ngModel)]="query" (keyup)="changeQuery($event)">
+<div style="background-color: white" [innerHTML]="pageHTMLSelected | async"></div>
+<pre>{{ pageHTMLRaw | async }}</pre>
