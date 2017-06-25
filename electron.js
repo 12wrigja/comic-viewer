@@ -12,7 +12,6 @@ app.on('ready', function() {
 
   session.defaultSession.webRequest.onBeforeSendHeaders(
       ['*'], (details, callback) => {
-        console.log('something interesting here.');
         details.requestHeaders['Referer'] = '';
         callback({cancel: false, requestHeaders: details.requestHeaders});
       });
@@ -61,16 +60,30 @@ app.on('window-all-closed', function() {
 });
 
 ipcMain.on('webget', (event, args) => {
-  console.log('webgetting!');
   http.get(args, (response) => {
-    console.log('get response.');
+    if (response.statusCode != 200) {
+      event.sender.send(
+          args, 'error:' + response.statusCode + ' error when getting ' + args);
+      return;
+      }
     var body = '';
     response.on('data', (d) => {
       body += d;
     });
     response.on('end', () => {
-      console.log('get response END');
       event.sender.send(args, body);
     });
+    response.on('login', () => {
+      console.log('Getting URL ' + args + ' requires Auth.');
+      event.sender.send(args, 'error:Auth required for ' + args);
+    });
+    response.on('error', (err) => {
+      console.log('Getting URL ' + args + ' caused error: ' + err);
+      event.sender.send(args, 'error:Error while getting ' + args);
+    });
+    response.on('abort', () => {
+      console.log('Getting URL ' + args + ' caused abort.');
+      event.sender.send(args, 'error:Abort while getting ' + args);
+    })
   });
 });

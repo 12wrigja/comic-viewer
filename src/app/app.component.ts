@@ -75,24 +75,30 @@ export class AppComponent {
             .do((str: string) => console.log('Finished parsing raw HTML.'))
             .share();
     const parser = new DOMParser();
-    this.pageHTMLSelected = Observable.combineLatest(
-        this.querySubject.asObservable().debounceTime(1000), this.pageHTMLRaw,
-        (query, pageHTML) => {
-          if (query !== '') {
-            const parsed = parser.parseFromString(pageHTML, 'text/html');
-            const selectedElement = parsed.querySelector(query) as HTMLElement;
-            if (selectedElement.children.length > 0) {
-              return this.sanitizer.bypassSecurityTrustHtml(
-                  selectedElement.innerHTML);
-            } else {
-              return this.sanitizer.bypassSecurityTrustHtml(
-                  selectedElement.parentElement.innerHTML);
-            }
-          } else {
-            console.log('Query is empty, returning whole page.');
-            return pageHTML;
-          }
-        });
+    this.pageHTMLSelected =
+        Observable
+            .combineLatest(
+                this.querySubject.asObservable().debounceTime(1000),
+                this.pageHTMLRaw,
+                (query, pageHTML) => {
+                  if (query !== '') {
+                    const parsed =
+                        parser.parseFromString(pageHTML, 'text/html');
+                    const selectedElement =
+                        parsed.querySelector(query) as HTMLElement;
+                    if (selectedElement.children.length > 0) {
+                      return this.sanitizer.bypassSecurityTrustHtml(
+                          selectedElement.innerHTML);
+                    } else {
+                      return this.sanitizer.bypassSecurityTrustHtml(
+                          selectedElement.parentElement.innerHTML);
+                    }
+                  } else {
+                    console.log('Query is empty, returning whole page.');
+                    return pageHTML;
+                  }
+                })
+            .share();
   }
 
   getPage() {
