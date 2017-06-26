@@ -1,7 +1,7 @@
 {
   "name": "comic-books",
   "version": "0.0.0",
-  "main": "electron.js",
+  "main": "electron.ts",
   "license": "MIT",
   "scripts": {
     "ng": "ng",
@@ -10,7 +10,7 @@
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "electron": "electron ."
+    "electron": "tsc electron.ts && electron electron.js"
   },
   "private": true,
   "dependencies": {

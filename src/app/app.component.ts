@@ -1,20 +1,24 @@
 import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/mapTo';
 import 'rxjs/add/operator/share';
-import 'rxjs/add/operator/switchMap';
+import 'rxjs/add/operator/mergeMap';
 import 'rxjs/add/operator/debounceTime';
 import 'rxjs/add/operator/withLatestFrom';
 import 'rxjs/add/operator/startWith';
 import 'rxjs/add/operator/delay';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/observable/combineLatest';
+import 'rxjs/add/observable/empty';
+import 'rxjs/add/observable/never';
 
 import {Component, NgZone, OnInit} from '@angular/core';
 import {DomSanitizer, SafeHtml} from '@angular/platform-browser';
-import {ElectronService} from 'ngx-electron';
 import {BehaviorSubject} from 'rxjs/BehaviorSubject';
 import {Observable} from 'rxjs/Observable';
 import {ReplaySubject} from 'rxjs/ReplaySubject';
 import {Subject} from 'rxjs/Subject';
+
+import {ElectronIPCHTTPService} from './services/electron-ipc-http.service';
 
 @Component({
   selector: 'app-root',
@@ -28,9 +32,10 @@ export class AppComponent {
   pageHTMLRaw: Observable<string>;
   pageHTMLSelected: Observable<SafeHtml>;
   query: '';
+  useCache = false;
 
   constructor(
-      private readonly electron: ElectronService,
+      private readonly ipcHTTP: ElectronIPCHTTPService,
       private readonly sanitizer: DomSanitizer, private readonly zone: NgZone) {
   }
 
@@ -38,41 +43,15 @@ export class AppComponent {
     this.pageHTMLRaw =
         this.pageNumber.asObservable()
             .do((pn) => console.log('Current page number: ' + pn))
-            .map(
+            .switchMap(
                 (pageNum: number):
                     Observable<string> => {
                       const pageUrl = 'http://www.giantitp.com/comics/oots' +
                           this.toPaddedNumberString(
                               this.pageNumber.getValue()) +
                           '.html';
-                      const pageSubject = new Subject<string>();
-                      this.electron.ipcRenderer.send('webget', pageUrl);
-                      this.electron.ipcRenderer.once(pageUrl, (event, args) => {
-                        this.zone.run(() => pageSubject.next(args));
-                      });
-                      return pageSubject.asObservable();
+                      return this.ipcHTTP.getURL(pageUrl, this.useCache);
                     })
-            .do(() => console.log('Requested IPC'))
-            .switchMap(html => html)
-            .do(() => console.log('IPC returned.'))
-            .map(
-                (html: string):
-                    string => {
-                      const relativeLinksRegex = /(href|background|src)="\//ig;
-                      const hyperLinksRegex = /href="([^"]*)"/ig;
-                      return html
-                          .replace(
-                              relativeLinksRegex,
-                              (match, g1) => {
-                                return g1 + '="' +
-                                    'http://www.giantitp.com/';
-                              })
-                          .replace(hyperLinksRegex, (match, g1) => {
-                            return 'href_old="' + g1 + '"';
-                          });
-                    })
-            .delay(1000)
-            .do((str: string) => console.log('Finished parsing raw HTML.'))
             .share();
     const parser = new DOMParser();
     this.pageHTMLSelected =
@@ -119,11 +98,15 @@ export class AppComponent {
     this.querySubject.next(this.query);
   }
 
+  toggleCache() {
+    this.useCache = !this.useCache;
+  }
+
   private toPaddedNumberString(num: number): string {
     let str = String(num);
     while (str.length < 4) {
       str = '0' + str;
-      }
+    }
     return str;
   }
 }
